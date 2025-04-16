@@ -16,7 +16,7 @@ class JobAPI(ABC):
     def load_vacancies(
         self, keyword: str, *args: Any, **kwargs: Any
     ) -> List[Dict[str, Any]]:
-        """Метод для получения вакансий по ключевому слову"""
+        """Метод для получения вакансий"""
         pass
 
 
@@ -46,7 +46,7 @@ class HHAPI(JobAPI):
         except requests.exceptions.RequestException as e:
             raise ConnectionError(f"Ошибка подключения: {e}")
 
-    def __get_employer_ids(self, company) -> List[str]:
+    def __get_employer_ids(self, company) -> tuple:
         """Получает ID работодателей по их названиям"""
         id = ""
         response = self.__session.get(
@@ -55,17 +55,19 @@ class HHAPI(JobAPI):
             headers=self.__headers
         )
         items = response.json().get('items', [])
-        if items:
-            id = items[0]['id']
-        print(company, items[0]['id'])
-        return id
+        # if items:
+        #     id = items[0]['id']
+        return items[0]['id'], items[0]['name']
 
-    def load_vacancies(self, companies) -> List[Dict]:
+    def load_vacancies(self, companies) -> tuple:
         """Загружает вакансии для всех компаний из списка"""
         vacancies = []
+        employers = []
 
         for company in companies:
-            employer_id = self.__get_employer_ids(company)
+            id, name = self.__get_employer_ids(company)
+            employer_id = id
+            employers.append(name)
             page = 0
             while True:
                 params = {
@@ -92,22 +94,22 @@ class HHAPI(JobAPI):
                     break
                 page += 1
 
-        return [{
+        return ([{
             'employer': item['employer']['name'],
             'title': item['name'],
             'salary_min': item['salary']['from'] if item['salary'] else None,
             'salary_max': item['salary']['to'] if item['salary'] else None,
             'url': item['alternate_url']
-        } for item in vacancies]
+        } for item in vacancies], employers)
 
 
 
 if __name__ == "__main__":
     hh = HHAPI()
 
-    vacancies = hh.load_vacancies(["Yandex", "СБЕР", "Avito", "VENTRA", "VK",
-             "Альфа-банк", "ALTERNATIVA GAMES", "Т-Банк", "Код безопасности"])
+    vacancies = hh.load_vacancies(["Яндекс", "СБЕР", "Naumen", "Тензор", "VENTRA", "Aston",
+             "Альфа-банк", "ALTERNATIVA GAMES", "Sense", "Код безопасности"])
 
     print(f"Найдено вакансий: {len(vacancies)}")
-    for v in vacancies[:10]:
-        print(v)
+    # for v in vacancies:
+    #     print(v)
