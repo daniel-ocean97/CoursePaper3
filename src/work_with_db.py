@@ -1,8 +1,9 @@
+from typing import Dict, List
+
 import psycopg2
 from psycopg2 import sql
-from psycopg2.extras import execute_batch
-from typing import List, Dict
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+from psycopg2.extras import execute_batch
 
 
 class DBCreator:
@@ -13,14 +14,10 @@ class DBCreator:
         self.__connect()  # Обычное подключение
         self.__create_tables()  # Создание таблиц в транзакции
 
-
     def __create_database(self):
         # Подключение к postgres с AUTOCOMMIT
         conn = psycopg2.connect(
-            dbname="postgres",
-            user="postgres",
-            password=self.password,
-            host="localhost"
+            dbname="postgres", user="postgres", password=self.password, host="localhost"
         )
         conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
 
@@ -37,14 +34,14 @@ class DBCreator:
             dbname=self.dbname,
             user="postgres",
             password=self.password,
-            host="localhost"
+            host="localhost",
         )
         self.cursor = self.conn.cursor()
 
-
     def __create_tables(self):
         """Создает таблицы в БД"""
-        self.cursor.execute("""
+        self.cursor.execute(
+            """
             DROP TABLE IF EXISTS vacancies CASCADE;
             DROP TABLE IF EXISTS employers CASCADE;
             
@@ -59,7 +56,8 @@ class DBCreator:
                 salary_min INTEGER,
                 salary_max INTEGER,
                 url TEXT NOT NULL);
-        """)
+        """
+        )
         self.conn.commit()
 
     def insert_employers(self, employers: List[str]):
@@ -79,44 +77,42 @@ class DBCreator:
         """
         data = []
         for v in vacancies:
-            employer_name = v.get('employer')
+            employer_name = v.get("employer")
             employer_id = employer_ids.get(employer_name)
 
             if not employer_id:
                 continue  # Пропускаем вакансии с неизвестным работодателем
 
-            data.append((
-                employer_id,
-                v.get('title'),
-                v.get('salary_min'),
-                v.get('salary_max'),
-                v.get('url')
-            ),)
+            data.append(
+                (
+                    employer_id,
+                    v.get("title"),
+                    v.get("salary_min"),
+                    v.get("salary_max"),
+                    v.get("url"),
+                ),
+            )
 
         # 4. Пакетная вставка
         if data:
             execute_batch(self.cursor, query, data)
             self.conn.commit()
 
-    def close(self) -> None:
+    def close(self):
         """Закрывает соединение с БД"""
         self.cursor.close()
         self.conn.close()
 
-    def drop_database(self) -> None:
+    def drop_database(self):
         """Удаляет базу данных"""
         self.conn = psycopg2.connect(
-            dbname="postgres",
-            user="postgres",
-            password="3228",
-            host="localhost"
+            dbname="postgres", user="postgres", password="3228", host="localhost"
         )
         self.conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
 
         cursor = self.conn.cursor()
 
         cursor.execute(f"DROP DATABASE {self.dbname}")
-
 
 
 class DBManager:
@@ -127,13 +123,14 @@ class DBManager:
             dbname=self.dbname,
             user="postgres",
             password=self.password,
-            host="localhost"
+            host="localhost",
         )
         self.cursor = self.conn.cursor()
 
     def get_companies_and_vacancies_count(self) -> list[tuple]:
         """Получает список всех компаний и количество вакансий у каждой компании"""
-        self.cursor.execute("""
+        self.cursor.execute(
+            """
                 SELECT 
                     e.name AS company_name,
                     COUNT(v.id) AS vacancies_count
@@ -145,49 +142,61 @@ class DBManager:
                     e.name
                 ORDER BY 
                     vacancies_count DESC;
-            """)
+            """
+        )
         result = self.cursor.fetchall()
         return result
 
-    def get_all_vacancies(self):
+    def get_all_vacancies(self) -> list[tuple]:
         """Получает все вакансии"""
-        self.cursor.execute("""
+        self.cursor.execute(
+            """
         SELECT 
             e.name AS company_name,
             v.title,
             v.salary_min,
             v.url
         FROM vacancies v
-        JOIN employers e ON v.employer_id = e.id""")
+        JOIN employers e ON v.employer_id = e.id"""
+        )
         result = self.cursor.fetchall()
         return result
 
-    def get_avg_salary(self):
+    def get_avg_salary(self) -> int:
         """Получает среднюю зарплату"""
-        self.cursor.execute("""
+        self.cursor.execute(
+            """
         SELECT ROUND(AVG((v.salary_min+v.salary_max)/2)) as avg_salary
             FROM vacancies v
             WHERE salary_min IS NOT NULL 
-            OR salary_max IS NOT NULL""")
+            OR salary_max IS NOT NULL"""
+        )
         result = self.cursor.fetchall()
         return int(result[0][0])
 
-    def get_vacancies_with_higher_salary(self):
+    def get_vacancies_with_higher_salary(self) -> list[tuple]:
         """Получает вакансии с зарплатой выше средней"""
-        self.cursor.execute(f"""
+        self.cursor.execute(
+            f"""
         SELECT title, url 
         FROM vacancies v
-        WHERE (v.salary_min+v.salary_max)/2 > {self.get_avg_salary()} """)
+        WHERE (v.salary_min+v.salary_max)/2 > {self.get_avg_salary()} """
+        )
         result = self.cursor.fetchall()
         return result
 
-    def vacancies_with_keyword(self, keyword: str):
+    def vacancies_with_keyword(self, keyword: str) -> list[tuple]:
         """Получает список всех вакансий, в названии которых содержатся переданные в метод слова"""
-        self.cursor.execute(f"""
+        self.cursor.execute(
+            f"""
         SELECT title,salary_min, salary_max, url
         FROM vacancies
-        WHERE title LIKE '%{keyword}%'""")
+        WHERE title LIKE '%{keyword}%'"""
+        )
         result = self.cursor.fetchall()
         return result
 
-
+    def close(self) -> None:
+        """Закрывает соединение с БД"""
+        self.cursor.close()
+        self.conn.close()

@@ -11,6 +11,7 @@ black = "^25.1.0"
 isort = "^6.0.1"
 requests = "^2.32.3"
 psycopg2 = "^2.9.10"
+dotenv = "^0.9.9"
 
 
 [build-system]

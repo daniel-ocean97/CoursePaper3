@@ -51,13 +51,13 @@ class HHAPI(JobAPI):
         id = ""
         response = self.__session.get(
             f"{self.__url}employers",
-            params={'text': company, 'only_with_vacancies': True},
-            headers=self.__headers
+            params={"text": company, "only_with_vacancies": True},
+            headers=self.__headers,
         )
-        items = response.json().get('items', [])
+        items = response.json().get("items", [])
         # if items:
         #     id = items[0]['id']
-        return items[0]['id'], items[0]['name']
+        return items[0]["id"], items[0]["name"]
 
     def load_vacancies(self, companies) -> tuple:
         """Загружает вакансии для всех компаний из списка"""
@@ -71,45 +71,38 @@ class HHAPI(JobAPI):
             page = 0
             while True:
                 params = {
-                    'employer_id': employer_id,
-                    'page': page,
-                    'per_page': 100,
-                    'archived': False
+                    "employer_id": employer_id,
+                    "page": page,
+                    "per_page": 100,
+                    "archived": False,
                 }
 
                 response = self.__session.get(
-                    f"{self.__url}vacancies",
-                    params=params,
-                    headers=self.__headers
+                    f"{self.__url}vacancies", params=params, headers=self.__headers
                 )
 
                 if not response.ok:
                     break
 
                 data = response.json()
-                vacancies.extend(data.get('items', []))
+                vacancies.extend(data.get("items", []))
 
                 # Проверка пагинации
-                if page >= data.get('pages', 0) - 1:
+                if page >= data.get("pages", 0) - 1:
                     break
                 page += 1
 
-        return ([{
-            'employer': item['employer']['name'],
-            'title': item['name'],
-            'salary_min': item['salary']['from'] if item['salary'] else None,
-            'salary_max': item['salary']['to'] if item['salary'] else None,
-            'url': item['alternate_url']
-        } for item in vacancies], employers)
+        return (
+            [
+                {
+                    "employer": item["employer"]["name"],
+                    "title": item["name"],
+                    "salary_min": item["salary"]["from"] if item["salary"] else None,
+                    "salary_max": item["salary"]["to"] if item["salary"] else None,
+                    "url": item["alternate_url"],
+                }
+                for item in vacancies
+            ],
+            employers,
+        )
 
-
-
-if __name__ == "__main__":
-    hh = HHAPI()
-
-    vacancies = hh.load_vacancies(["Яндекс", "СБЕР", "Naumen", "Тензор", "VENTRA", "Aston",
-             "Альфа-банк", "ALTERNATIVA GAMES", "Sense", "Код безопасности"])
-
-    print(f"Найдено вакансий: {len(vacancies)}")
-    # for v in vacancies:
-    #     print(v)
